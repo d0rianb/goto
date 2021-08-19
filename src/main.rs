@@ -73,7 +73,7 @@ fn get_guess(text: &String, offset: i8) -> String {
     if !is_valid_path(&path) { return String::new(); }
     let subfolders = get_subfolder(path);
     if subfolders.len() == 0 { return String::new(); }
-    let last_input = get_last_input(&text);
+    let last_input = &get_last_input(&text).to_lowercase();
 
     let sorted_subfolders = subfolders
         .iter()
@@ -84,9 +84,9 @@ fn get_guess(text: &String, offset: i8) -> String {
                 .unwrap()
                 .to_string_lossy()
                 .into_owned()
-                .to_lowercase()
+                // .to_lowercase()
         })
-        .sorted()
+        .sorted_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()))
         .collect::<Vec<String>>();
     let nb_subfolders = sorted_subfolders.len();
 
@@ -97,7 +97,7 @@ fn get_guess(text: &String, offset: i8) -> String {
     let mut guess = String::new();
     for i in 0..nb_subfolders {
         let name = &sorted_subfolders[i] as &str;
-        if name.cmp(last_input).is_ge() && name.starts_with(last_input) {
+        if name.to_lowercase().cmp(last_input).is_ge() && name.to_lowercase().starts_with(last_input) {
             let input_len = last_input.len();
             if input_len <= name.len() {
                 guess = name[input_len..].to_string();

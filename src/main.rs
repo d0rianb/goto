@@ -14,6 +14,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use itertools::Itertools;
 use std::cmp::max;
+use std::process::Command;
 
 fn is_valid_path(input: &str) -> bool {
     return path::Path::new(input).exists();
@@ -99,7 +100,7 @@ fn get_guess(text: &String, offset: i8) -> String {
         if name.cmp(last_input).is_ge() && name.starts_with(last_input) {
             let input_len = last_input.len();
             if input_len <= name.len() {
-                guess = name[input_len..].to_string();`
+                guess = name[input_len..].to_string();
                 break
             }
         }
@@ -111,6 +112,15 @@ fn fill_guess(text: &mut String, offset: i8) {
     let ref guess = get_guess(text, offset);
     if guess == "" { return; };
     text.push_str(&(guess.to_owned() + "/"));
+}
+
+fn travel_to(path: &String) {
+    if !is_valid_path(path) { return }
+    Command::new("open")
+        .args(&[path])
+        .output()
+        .expect("Failed to open a Finder window");
+
 }
 
 fn main() {
@@ -133,7 +143,8 @@ fn main() {
             Key::Char('\t') | Key::Right => { fill_guess(&mut text, offset) }
             Key::Down => { offset += 1 }
             Key::Up => { offset -= max(offset - 1, 0) }
-            Key::Char(' ') => { text.push_str("\\ ") }
+            // Key::Char(' ') => { text.push_str("\\ ") }
+            Key::Char('\n') => { travel_to(&text) }
             _ => { if let Key::Char(k) = key { text.push(k) } }
         }
         write!(stdout, "{}", text).unwrap();

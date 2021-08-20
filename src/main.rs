@@ -13,7 +13,7 @@ use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use itertools::Itertools;
-use std::cmp::max;
+use std::cmp::{Ordering};
 use std::process::Command;
 
 fn is_valid_path(input: &str) -> bool {
@@ -68,7 +68,7 @@ fn write_header(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>) {
     stdout.lock().flush().unwrap();
 }
 
-fn get_guess(text: &String, offset: i8) -> String {
+fn get_guess(text: &String, mut offset: i8) -> String {
     let path = get_path_from_input(&text);
     if !is_valid_path(&path) { return String::new(); }
     let subfolders = get_subfolder(path);
@@ -87,10 +87,19 @@ fn get_guess(text: &String, offset: i8) -> String {
                 // .to_lowercase()
         })
         .sorted_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()))
+        .sorted_by(|a, b| {
+            if b.starts_with('.') {
+                if a.starts_with('.') { return a.to_lowercase().cmp(&b.to_lowercase()); };
+                return Ordering::Less;
+            }
+            return Ordering::Greater;
+        })
         .collect::<Vec<String>>();
+
     let nb_subfolders = sorted_subfolders.len();
 
     if last_input == "" {
+        if offset < 0 { offset += nb_subfolders as i8 }
         return String::from(&sorted_subfolders[offset as usize % nb_subfolders]);
     }
 
@@ -123,12 +132,9 @@ fn travel_to(path: &String) {
 
 }
 
-fn main() {
+fn run_in_terminal() {
     let stdin = stdin();
-    assert!(
-        termion::is_tty(&stdin),
-        "The terminal is not TTY compatible"
-    );
+    assert!(termion::is_tty(&stdin), "The terminal is not TTY compatible");
     let mut stdout = stdout().into_raw_mode().unwrap();
     write!(stdout, "{}", termion::clear::All).unwrap();
     let mut text = String::new();
@@ -140,10 +146,9 @@ fn main() {
         match key {
             Key::Ctrl('c') => break,
             Key::Backspace => { text.pop(); }
-            Key::Char('\t') | Key::Right => { fill_guess(&mut text, offset) }
+            Key::Char('\t') | Key::Right => { fill_guess(&mut text, offset); offset = 0; }
             Key::Down => { offset += 1 }
-            Key::Up => { offset -= max(offset - 1, 0) }
-            // Key::Char(' ') => { text.push_str("\\ ") }
+            Key::Up => { offset -= 1 }
             Key::Char('\n') => { travel_to(&text) }
             _ => { if let Key::Char(k) = key { text.push(k) } }
         }
@@ -156,6 +161,10 @@ fn main() {
             guess = guess,
             reset = color::Fg(color::Reset)
         ).unwrap();
-    stdout.lock().flush().unwrap();
+        stdout.lock().flush().unwrap();
     }
+}
+
+fn main() {
+    run_in_terminal();
 }
